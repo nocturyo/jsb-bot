@@ -5,7 +5,7 @@ import {
   GuildMember,
 } from 'discord.js';
 import { enqueue, getQueue } from '../music/audioPlayer';
-import { search } from 'play-dl';
+import * as play from 'play-dl';
 
 function isURL(input: string) {
   try {
@@ -16,9 +16,55 @@ function isURL(input: string) {
   }
 }
 
+/**
+ * Zwraca pewny link do YouTube video (oraz tytuł) na podstawie:
+ * - linku YouTube,
+ * - linku Spotify (mapowane do YT po tytule),
+ * - frazy tekstowej (pierwszy wynik YT).
+ */
+async function resolveToYoutube(input: string): Promise<{ url: string; title?: string } | null> {
+  // 1) URL: rozpoznaj źródło
+  if (isURL(input)) {
+    const kind = await play.validate(input);
+    if (kind === 'yt_video') {
+      // YouTube video – gotowe
+      const info = await play.video_basic_info(input);
+      return { url: input, title: info?.video_details?.title };
+    }
+    if (kind === 'sp_track') {
+      // Spotify track → pobierz meta i wyszukaj pierwszy wynik na YT
+      const sp = await play.spotify(input);
+      // @ts-expect-error typy play-dl są luźne – ostrożne pobranie
+      const track = sp?.name && sp?.artists ? `${sp.name} ${sp.artists?.[0]?.name ?? ''}` : null;
+      if (!track) return null;
+      const results = await play.search(track, { source: { youtube: 'video' }, limit: 1 });
+      const first = results[0] as unknown;
+      if (typeof first === 'object' && first !== null) {
+        const obj = first as { url?: unknown; title?: unknown };
+        if (typeof obj.url === 'string')
+          return { url: obj.url, title: typeof obj.title === 'string' ? obj.title : undefined };
+      }
+      return null;
+    }
+    // (opcjonalnie) playlisty YT/Spotify – tu na razie pomijamy
+    // Możesz dorobić w kolejnym kroku.
+  }
+
+  // 2) Fraza tekstowa → pierwszy wynik YT
+  const results = await play.search(input, { source: { youtube: 'video' }, limit: 1 });
+  const first = results[0] as unknown;
+  if (typeof first === 'object' && first !== null) {
+    const obj = first as { url?: unknown; title?: unknown };
+    if (typeof obj.url === 'string') {
+      return { url: obj.url, title: typeof obj.title === 'string' ? obj.title : undefined };
+    }
+  }
+  return null;
+}
+
 export const data = new SlashCommandBuilder()
   .setName('play')
-  .setDescription('Odtwórz muzykę z linku lub po wyszukaniu na YouTube')
+  .setDescription('Odtwórz muzykę z linku (YT/Spotify) lub frazy')
   .addStringOption((opt) =>
     opt
       .setName('query')
@@ -44,42 +90,22 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const input = interaction.options.getString('query', true);
   await interaction.deferReply({ ephemeral: true });
 
-  let url = input;
-  let title: string | undefined;
-
-  // Jeśli nie URL -> wyszukaj na YouTube i weź pierwszy wynik
-  if (!isURL(input)) {
-    const results = await search(input, { source: { youtube: 'video' }, limit: 1 });
-
-    const first = results[0] as unknown;
-    // Bezpieczne zawężanie typu
-    let rUrl: string | undefined;
-    let rTitle: string | undefined;
-
-    if (typeof first === 'object' && first !== null) {
-      const obj = first as { url?: unknown; title?: unknown };
-      if (typeof obj.url === 'string') rUrl = obj.url;
-      if (typeof obj.title === 'string') rTitle = obj.title;
-    }
-
-    if (!rUrl) {
-      await interaction.editReply('Nie znaleziono żadnych wyników.');
-      return;
-    }
-    url = rUrl;
-    title = rTitle;
+  const resolved = await resolveToYoutube(input);
+  if (!resolved) {
+    await interaction.editReply('Nie znaleziono źródła audio dla podanego wejścia.');
+    return;
   }
 
   await enqueue(interaction.guild, voice, {
-    query: url,
-    title,
+    query: resolved.url,
+    title: resolved.title,
     requestedBy: interaction.user.tag,
   });
 
   const q = getQueue(interaction.guild.id);
   await interaction.editReply(
     q.length === 1
-      ? `▶️ Zaczynam odtwarzanie: **${title ?? url}**`
-      : `➕ Dodano do kolejki: **${title ?? url}** (pozycja ${q.length})`,
+      ? `▶️ Zaczynam odtwarzanie: **${resolved.title ?? resolved.url}**`
+      : `➕ Dodano do kolejki: **${resolved.title ?? resolved.url}** (pozycja ${q.length})`,
   );
 }
