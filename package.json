@@ -12,7 +12,8 @@
     "format:check": "prettier --check .",
     "lint": "eslint . --ext .ts --fix",
     "prepare": "husky",
-    "type-check": "tsc -p ."
+    "type-check": "tsc -p .",
+    "test": "jest --passWithNoTests"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -32,6 +33,7 @@
     ]
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.11.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
@@ -39,8 +41,10 @@
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^9.1.0",
     "husky": "^9.1.7",
+    "jest": "^30.0.5",
     "lint-staged": "^16.1.5",
     "prettier": "^3.3.3",
+    "ts-jest": "^29.4.1",
     "tsx": "^4.7.0",
     "typescript": "^5.4.0",
     "typescript-eslint": "^8.40.0"
