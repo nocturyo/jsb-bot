@@ -1,68 +1,71 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
+import 'dotenv/config';
 import { REST, Routes, SlashCommandBuilder } from 'discord.js';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { getEnv } from '../src/config/env';
-import { logger } from '../src/utils/logger';
 
-const { DISCORD_TOKEN, APPLICATION_ID, GUILD_ID } = getEnv();
 const isDev = process.env.NODE_ENV !== 'production';
+
+// --- pobranie env + walidacja ---
+if (!process.env.DISCORD_TOKEN) {
+  console.error('Brak DISCORD_TOKEN w zmiennych środowiskowych.');
+  process.exit(1);
+}
+if (!process.env.APPLICATION_ID) {
+  console.error('Brak APPLICATION_ID w zmiennych środowiskowych.');
+  process.exit(1);
+}
+
+// po walidacji rzutujemy – już wiemy, że to string
+const TOKEN = process.env.DISCORD_TOKEN as string;
+const APP_ID = process.env.APPLICATION_ID as string;
+const GUILD_ID = process.env.GUILD_ID as string | undefined;
 
 type LoadedModule = {
   data?: SlashCommandBuilder;
-  execute?: (...args: unknown[]) => unknown;
-  autocomplete?: (...args: unknown[]) => unknown;
-  default?: unknown;
+  execute?: (...args: unknown[]) => unknown | Promise<unknown>;
+  autocomplete?: (...args: unknown[]) => unknown | Promise<unknown>;
 };
 
-async function loadSlashCommandData() {
+async function loadSlashCommandData(): Promise<unknown[]> {
   const ext = isDev ? '.ts' : '.js';
   const dir = path.resolve(isDev ? 'src/commands' : 'dist/src/commands');
 
-  const commands: unknown[] = [];
+  const out: unknown[] = [];
 
   for (const file of await readdir(dir)) {
     if (!file.endsWith(ext)) continue;
+
     const full = path.resolve(dir, file);
+    const href = pathToFileURL(full).href + (isDev ? `?t=${Date.now()}` : '');
 
-    let mod: LoadedModule | undefined;
-    if (isDev) {
-      mod = (await import(pathToFileURL(full).href)) as unknown as LoadedModule;
-    } else {
-      mod = require(full) as LoadedModule;
-    }
+    const mod = (await import(href)) as unknown as LoadedModule;
 
-    if (mod?.data && typeof mod.data.name === 'string') {
-      commands.push(mod.data.toJSON());
+    if (mod?.data && typeof mod.data.toJSON === 'function') {
+      out.push(mod.data.toJSON());
     }
   }
 
-  return commands;
+  return out;
 }
 
 async function register() {
-  const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
+  const rest = new REST({ version: '10' }).setToken(TOKEN);
 
-  const commands = await loadSlashCommandData();
+  const body = await loadSlashCommandData();
+  console.log(`Rejestruję ${body.length} komend...`);
 
-  try {
-    logger.info(`Rejestruję ${commands.length} komend...`);
+  const route = GUILD_ID
+    ? Routes.applicationGuildCommands(APP_ID, GUILD_ID)
+    : Routes.applicationCommands(APP_ID);
 
-    if (GUILD_ID) {
-      await rest.put(Routes.applicationGuildCommands(APPLICATION_ID, GUILD_ID), {
-        body: commands,
-      });
-      logger.info('Komendy zarejestrowane (GUILD).');
-    } else {
-      await rest.put(Routes.applicationCommands(APPLICATION_ID), {
-        body: commands,
-      });
-      logger.info('Komendy zarejestrowane (GLOBAL).');
-    }
-  } catch (err) {
-    logger.error('Błąd podczas rejestracji komend', err);
-  }
+  await rest.put(route, { body });
+  console.log(
+    GUILD_ID ? '✅ Komendy zarejestrowane (GUILD).' : '✅ Komendy zarejestrowane (GLOBAL).',
+  );
 }
 
-register();
+register().catch((err) => {
+  console.error('❌ Błąd rejestracji komend:', err);
+  process.exit(1);
+});
