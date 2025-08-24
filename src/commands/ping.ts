@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 
-export const data = new SlashCom mandBuilder()
+                          export const data = new SlashCommandBuilder()
   .setName('ping')
   .setDescription('Sprawdź czas reakcji bota');
 
