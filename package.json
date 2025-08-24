@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --ext .ts --fix",
-    "prepare": "husky"
+    "prepare": "husky",
+    "type-check": "tsc -p ."
   },
   "engines": {
     "node": ">=18.0.0"
