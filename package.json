@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "discord.js": "^14.16.3",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "winston": "^3.17.0"
   },
   "lint-staged": {
     "*.{ts,js}": [
