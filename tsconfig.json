@@ -8,9 +8,9 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"],
     "typeRoots": ["./types", "./node_modules/@types"],
-    "lib": ["ES2021", "DOM"]
+    "lib": ["ES2021", "DOM"],
+    "types": ["node", "jest"]
   },
   "include": ["src", "scripts", "types"],
   "exclude": ["node_modules"]
