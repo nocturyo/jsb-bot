@@ -11,9 +11,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Run tests
-        run: npm test
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -31,6 +28,9 @@ jobs:
 
       - name: Type check
         run: npm run type-check
+
+      - name: Run tests
+        run: npm test
 
       - name: Build (ts -> dist)
         run: npm run build
