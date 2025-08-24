@@ -1,0 +1,30 @@
+services:
+  bot:
+    build: .
+    container_name: jsb-bot
+    environment:
+      # 🔐 Uzupełnij w .env (obok compose) albo w GitHub Secrets przy deployu
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      APPLICATION_ID: ${APPLICATION_ID}
+      # Dla rejestracji local/dev użyj GUILD_ID; bez GUILD_ID rejestruje globalnie
+      GUILD_ID: ${GUILD_ID:-}
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+
+  # Jednorazowa rejestracja komend (odpalasz ręcznie, gdy zmienisz definicje)
+  register:
+    build: .
+    container_name: jsb-register
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      APPLICATION_ID: ${APPLICATION_ID}
+      GUILD_ID: ${GUILD_ID:-}
+      NODE_ENV: production
+    command: ['node', 'dist/scripts/register-commands.js']
+    depends_on:
+      - bot
+    profiles: ['register'] # uruchamiasz tylko gdy potrzebujesz
