@@ -1,8 +1,8 @@
-# Używamy lekkiej bazy z Node 22
-FROM node:22-alpine AS base
+# Etap build
+FROM node:22-alpine AS build
 WORKDIR /app
 
-# Zależności (cache-friendly)
+# Instalacja zależności (cache-friendly)
 COPY package*.json ./
 RUN npm ci
 
@@ -10,23 +10,23 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Finalny obraz (też alpine)
+# Zredukuj zależności do produkcyjnych
+RUN npm prune --omit=dev
+
+# Etap finalny (runtime)
 FROM node:22-alpine
 WORKDIR /app
 
-# Kopiujemy tylko to, co potrzebne do runtime
-COPY --from=base /app/package*.json ./
-RUN npm ci --omit=dev
+# Skopiuj tylko to, co potrzebne w runtime
+COPY --from=build /app/package*.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/.env.example ./.env.example
 
-COPY --from=base /app/dist ./dist
-COPY --from=base /app/.env.example ./.env.example
-
-# Tworzymy katalogi na dane/logi (będą podpinane jako wolumeny)
+# Katalogi na dane/logi (montowane jako wolumeny)
 RUN mkdir -p /app/data /app/logs
 
-# Zmienne środowiskowe domyślne (możesz nadpisać w compose)
 ENV NODE_ENV=production \
     LOG_LEVEL=info
 
-# Start bota (prod)
 CMD ["node", "dist/src/index.js"]
