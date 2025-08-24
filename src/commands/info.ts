@@ -12,3 +12,5 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     ephemeral: true,
   });
 }
+
+export const category = 'Info';

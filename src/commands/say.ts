@@ -4,16 +4,10 @@ export const data = new SlashCommandBuilder()
   .setName('say')
   .setDescription('Bot powtarza podany tekst (opcjonalnie oznacza użytkownika).')
   .addStringOption((opt) =>
-    opt
-      .setName('tekst')
-      .setDescription('Co mam powiedzieć?')
-      .setRequired(true),
+    opt.setName('tekst').setDescription('Co mam powiedzieć?').setRequired(true),
   )
   .addUserOption((opt) =>
-    opt
-      .setName('uzytkownik')
-      .setDescription('Kogo oznaczyć (opcjonalnie)?')
-      .setRequired(false),
+    opt.setName('uzytkownik').setDescription('Kogo oznaczyć (opcjonalnie)?').setRequired(false),
   )
   .addBooleanOption((opt) =>
     opt
@@ -30,3 +24,5 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const content = `${user ? `<@${user.id}> ` : ''}${text}`;
   await interaction.reply({ content, ephemeral });
 }
+
+export const category = 'Info';

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 import { Client, GatewayIntentBits, Collection } from 'discord.js';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -16,8 +17,17 @@ process.on('uncaughtException', (err) => {
   console.error('[UNCAUGHT_EXCEPTION]', err);
 });
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+});
 client.commands = new Collection<string, CommandModule>();
+
+type LoadedModule = {
+  data?: { name?: string; toJSON?: () => unknown };
+  execute?: (...args: unknown[]) => unknown | Promise<unknown>;
+  autocomplete?: (...args: unknown[]) => unknown | Promise<unknown>;
+  default?: unknown;
+};
 
 async function loadCommands() {
   const ext = isDev ? '.ts' : '.js';
@@ -27,16 +37,20 @@ async function loadCommands() {
     if (!file.endsWith(ext)) continue;
     const full = path.resolve(dir, file);
 
-    let mod: any;
+    let mod: LoadedModule | undefined;
     if (isDev) {
-      mod = await import(pathToFileURL(full).href + `?t=${Date.now()}`);
+      mod = (await import(
+        pathToFileURL(full).href + `?t=${Date.now()}`
+      )) as unknown as LoadedModule;
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      mod = require(full);
+      // CJS build: require działa stabilniej na ścieżkach plikowych
+      // (dynamic import bywa transpilowany do require przez TS)
+
+      mod = require(full) as LoadedModule;
     }
 
     if (mod?.data?.name && typeof mod.execute === 'function') {
-      client.commands.set(mod.data.name, mod as CommandModule);
+      client.commands.set(mod.data.name, mod as unknown as CommandModule);
     }
   }
   logger.info(`Załadowano komend: ${client.commands.size}`);
@@ -50,18 +64,25 @@ async function loadEvents() {
     if (!file.endsWith(ext)) continue;
     const full = path.resolve(dir, file);
 
-    let mod: any;
+    let mod: LoadedModule | undefined;
     if (isDev) {
-      mod = await import(pathToFileURL(full).href + `?t=${Date.now()}`);
+      mod = (await import(
+        pathToFileURL(full).href + `?t=${Date.now()}`
+      )) as unknown as LoadedModule;
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      mod = require(full);
+      mod = require(full) as LoadedModule;
     }
 
-    const { name, once, execute } = mod ?? {};
-    if (!name || !execute) continue;
-    if (once) client.once(name, (...args) => execute(...args));
-    else client.on(name, (...args) => execute(...args));
+    const name = (mod as Record<string, unknown>)?.['name'];
+    const once = (mod as Record<string, unknown>)?.['once'];
+    const execute = (mod as Record<string, unknown>)?.['execute'] as
+      | ((...args: unknown[]) => unknown)
+      | undefined;
+
+    if (!name || typeof execute !== 'function') continue;
+
+    if (once === true) client.once(String(name), (...args) => execute(...args));
+    else client.on(String(name), (...args) => execute(...args));
   }
 }
 

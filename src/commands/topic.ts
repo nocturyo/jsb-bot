@@ -43,7 +43,7 @@ export async function autocomplete(interaction: AutocompleteInteraction) {
   const filtered = choices.filter((t) => t.toLowerCase().startsWith(focused));
 
   // ograniczamy do 25 wyników (limit Discord API)
-  await interaction.respond(
-    filtered.slice(0, 25).map((t) => ({ name: t, value: t })),
-  );
+  await interaction.respond(filtered.slice(0, 25).map((t) => ({ name: t, value: t })));
 }
+
+export const category = 'Info';

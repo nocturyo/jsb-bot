@@ -9,3 +9,5 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const diff = sent.createdTimestamp - interaction.createdTimestamp;
   await interaction.editReply(`Pong! Opóźnienie: ${diff} ms`);
 }
+
+export const category = 'Info';

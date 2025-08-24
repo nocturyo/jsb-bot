@@ -9,11 +9,7 @@ import { getGuildConfig, setGuildConfig } from '../config/guildConfig';
 export const data = new SlashCommandBuilder()
   .setName('config')
   .setDescription('Ustawienia bota dla tego serwera')
-  .addSubcommand((sc) =>
-    sc
-      .setName('get')
-      .setDescription('Pokaż aktualną konfigurację'),
-  )
+  .addSubcommand((sc) => sc.setName('get').setDescription('Pokaż aktualną konfigurację'))
   .addSubcommand((sc) =>
     sc
       .setName('set-language')
@@ -23,10 +19,7 @@ export const data = new SlashCommandBuilder()
           .setName('language')
           .setDescription('Język')
           .setRequired(true)
-          .addChoices(
-            { name: 'Polski', value: 'pl' },
-            { name: 'English', value: 'en' },
-          ),
+          .addChoices({ name: 'Polski', value: 'pl' }, { name: 'English', value: 'en' }),
       ),
   )
   .addSubcommand((sc) =>
@@ -46,10 +39,7 @@ export const data = new SlashCommandBuilder()
       .setName('set-ephemeral')
       .setDescription('Czy odpowiedzi domyślnie mają być ephemeral')
       .addBooleanOption((opt) =>
-        opt
-          .setName('value')
-          .setDescription('true/false')
-          .setRequired(true),
+        opt.setName('value').setDescription('true/false').setRequired(true),
       ),
   );
 
@@ -83,14 +73,22 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const ch = interaction.options.getChannel('channel', true);
     const channel = ch as TextChannel;
     const cfg = await setGuildConfig(interaction.guildId, { logChannelId: channel.id });
-    await interaction.reply({ content: `✅ logChannelId = <#${cfg.logChannelId}>`, ephemeral: true });
+    await interaction.reply({
+      content: `✅ logChannelId = <#${cfg.logChannelId}>`,
+      ephemeral: true,
+    });
     return;
   }
 
   if (sub === 'set-ephemeral') {
     const value = interaction.options.getBoolean('value', true);
     const cfg = await setGuildConfig(interaction.guildId, { ephemeralDefault: value });
-    await interaction.reply({ content: `✅ ephemeralDefault = ${cfg.ephemeralDefault}`, ephemeral: true });
+    await interaction.reply({
+      content: `✅ ephemeralDefault = ${cfg.ephemeralDefault}`,
+      ephemeral: true,
+    });
     return;
   }
 }
+
+export const category = 'Admin';

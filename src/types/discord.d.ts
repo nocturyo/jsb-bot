@@ -1,15 +1,16 @@
 import type { Collection, SlashCommandBuilder } from 'discord.js';
 
-// === Globalny typ komendy – dostępny wszędzie bez importu ===
 declare global {
   interface CommandModule {
     data: SlashCommandBuilder;
-    execute: (...args: any[]) => Promise<any> | any;
-    autocomplete?: (...args: any[]) => Promise<any> | any;
+    execute: (...args: unknown[]) => Promise<unknown> | unknown;
+    autocomplete?: (...args: unknown[]) => Promise<unknown> | unknown;
+
+    category?: 'Admin' | 'Info' | 'Fun' | 'Utility' | 'Config';
+    hidden?: boolean;
   }
 }
 
-// Augmentacja Client – ma mapę komend
 declare module 'discord.js' {
   interface Client {
     commands: Collection<string, CommandModule>;
